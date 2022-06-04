@@ -1,0 +1,20 @@
+[package]
+name = "wsl2-dns-agent"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+backoff = "0.4.0"
+itertools = "0.10.3"
+thiserror = "1.0.31"
+win32-utils = { path = "../win32-utils", features = ["net"] }
+
+[dependencies.windows]
+version = "0.37.0"
+features = [
+    "Win32_Foundation",
+    "Win32_Networking_WinSock",
+    "Win32_NetworkManagement_IpHelper"
+]
