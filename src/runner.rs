@@ -59,6 +59,7 @@ enum Error {
 
 fn update_dns(config: &Config) -> Result<(), Error> {
     let dns = dns::get_configuration()?;
+    let resolv = dns.generate_resolv();
     log::info!("Applying DNS config: {dns:?}");
     let wsl = wsl::get_distributions()?
         .into_iter()
@@ -67,7 +68,7 @@ fn update_dns(config: &Config) -> Result<(), Error> {
     log::info!("Found {} WSL2 distributions", wsl.len());
     for d in wsl {
         log::info!("Updating DNS for {}", d.name);
-        if let Err(e) = update_distribution(&d, config.get_distribution_setting(&d.name)) {
+        if let Err(e) = update_distribution(&d, config.get_distribution_setting(&d.name), &resolv) {
             log::error!("Failed to update DNS for {}, due to: {}", d.name, e);
         }
     }
@@ -77,6 +78,7 @@ fn update_dns(config: &Config) -> Result<(), Error> {
 fn update_distribution(
     distribution: &WslDistribution,
     config: &DistributionSetting,
+    resolv: &str,
 ) -> Result<(), Error> {
     if config.patch_wsl_conf {
         let wsl_conf = distribution.read_wsl_conf()?;
@@ -91,10 +93,18 @@ fn update_distribution(
             true
         };
         if needs_update {
-            log::info!("Updating /etc/wsl.conf");
+            log::warn!("Updating /etc/wsl.conf for {}", distribution.name);
             config.set("network", "generateResolvConf", Some("false".to_string()));
-            distribution.write_wsl_conf(&config.writes())?;
+            let new_conf = config.writes().replace("\r\n", "\n");
+            distribution.write_file("/etc/wsl.conf", &new_conf)?;
+            // Distribution needs to be restarted to take effect
+            distribution.terminate()?;
         }
+    }
+    distribution.write_file("/etc/resolv.conf", resolv)?;
+    if config.restore_state && distribution.was_stopped() {
+        log::info!("Terminating {}", distribution.name);
+        distribution.terminate()?;
     }
     Ok(())
 }

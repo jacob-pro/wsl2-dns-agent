@@ -118,7 +118,7 @@ impl WslDistribution {
         Ok(Some(String::from_utf8(output.stdout)?))
     }
 
-    pub fn write_wsl_conf(&self, contents: &str) -> Result<(), Error> {
+    pub fn write_file(&self, path: &str, contents: &str) -> Result<(), Error> {
         let mut p = Command::new("wsl.exe")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -128,7 +128,7 @@ impl WslDistribution {
             .arg("--user")
             .arg("root")
             .arg("tee")
-            .arg("/etc/wsl.conf")
+            .arg(path)
             .spawn()?;
 
         let mut child_stdin = p.stdin.take().unwrap();
@@ -138,5 +138,18 @@ impl WslDistribution {
         let output = p.wait_with_output()?;
         check_wsl_output(&output)?;
         Ok(())
+    }
+
+    pub fn terminate(&self) -> Result<(), Error> {
+        let output = Command::new("wsl.exe")
+            .arg("--terminate")
+            .arg(&self.name)
+            .output()?;
+        check_wsl_output(&output)?;
+        Ok(())
+    }
+
+    pub fn was_stopped(&self) -> bool {
+        self.status == "Stopped"
     }
 }

@@ -23,6 +23,8 @@ pub struct DistributionSetting {
     #[serde(default = "r#true")]
     pub apply_dns: bool,
     /// If the distribution was previously Stopped, then shutdown once the DNS update is complete
+    /// Note: This option is currently broken and shouldn't be used due to:
+    /// https://github.com/microsoft/WSL/issues/6977
     #[serde(default)]
     pub restore_state: bool,
     /// Automatically patch /etc/wsl.conf to disable generateResolvConf
