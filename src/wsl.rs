@@ -5,9 +5,9 @@ use thiserror::Error;
 
 #[derive(Debug)]
 pub struct WslDistribution {
-    name: String,
-    status: String,
-    version: u32,
+    pub name: String,
+    pub status: String,
+    pub version: u32,
 }
 
 #[derive(Debug, Error)]

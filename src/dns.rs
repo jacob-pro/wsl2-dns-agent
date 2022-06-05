@@ -152,7 +152,7 @@ impl Display for RouteAndAdapter<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let m_sum = self.metric_sum();
         let s = format!(
-            "Route to {}/{}, interface index: {}, metric: {} ({} + {}), dns servers: {:?}, dns suffixes: {:?}",
+            "{}/{}, interface index: {}, metric: {} ({} + {}), dns servers: {:?}, dns suffixes: {:?}",
             self.route.destination_prefix_ip,
             self.route.destination_prefix_len,
             self.route.interface_index,
@@ -237,13 +237,13 @@ pub fn get_configuration() -> Result<DnsConfiguration, Error> {
                 .iter()
                 .find(|g| g.route.destination_prefix_ip.is_ipv4());
             if let Some(best_v4) = best_v4 {
-                println!("IPv4: {}", best_v4);
+                log::info!("Best IPv4 Route: {}", best_v4);
             }
             let best_v6 = grouped
                 .iter()
                 .find(|g| g.route.destination_prefix_ip.is_ipv6());
             if let Some(best_v6) = best_v6 {
-                println!("IPv6: {}", best_v6);
+                log::info!("Best IPv6 Route: {}", best_v6);
             }
             // Collect the IPv4 and then IPv6 dns configurations
             let mut dns_servers = Vec::new();

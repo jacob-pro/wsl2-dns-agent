@@ -23,7 +23,7 @@ const CALLBACK_MSG: u32 = WM_APP + 1;
 
 pub struct TrayProperties {
     pub log_file_path: PathBuf,
-    pub _sender: mpsc::Sender<RunReason>,
+    pub sender: mpsc::Sender<RunReason>,
 }
 
 pub fn run_tray(properties: TrayProperties) {
@@ -116,10 +116,10 @@ unsafe extern "system" fn tray_window_proc(
 ) -> LRESULT {
     match hwnd.get_user_data::<TrayProperties>() {
         None => {}
-        Some(_properties) => match msg {
+        Some(properties) => match msg {
             CALLBACK_MSG => match LOWORD(l_param.0 as u32) {
                 WM_LBUTTONUP | WM_RBUTTONUP => {
-                    println!("Clicked");
+                    properties.sender.send(RunReason::TrayButton).ok();
                 }
                 _ => {}
             },
