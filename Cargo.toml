@@ -11,6 +11,7 @@ homepage = "https://github.com/jacob-pro/wsl2-dns-agent"
 
 [dependencies]
 backoff = "0.4.0"
+configparser = "3.0.0"
 dirs = "4.0.0"
 itertools = "0.10.3"
 log = "0.4.17"
@@ -18,8 +19,8 @@ serde = { version = "1.0.137", features = ["derive"] }
 simplelog = "0.12.0"
 thiserror = "1.0.31"
 toml = "0.5.9"
-win32-utils = { path = "../win32-utils", features = ["net", "window", "instance"] }
 #win32-utils = { features = ["net", "window", "instance"], git = "https://github.com/jacob-pro/win32-utils" }
+win32-utils = { path = "../win32-utils", features = ["net", "window", "instance"] }
 
 [dependencies.windows]
 version = "0.37.0"

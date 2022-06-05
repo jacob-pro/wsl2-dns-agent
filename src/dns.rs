@@ -107,7 +107,7 @@ fn get_adapters() -> Result<Vec<Adapter>, Error> {
             }
             let mut dns_suffixes = Vec::new();
             let first_suffix = String::from_pwstr_lossy(adapter.DnsSuffix);
-            if first_suffix.len() > 0 {
+            if !first_suffix.is_empty() {
                 dns_suffixes.push(first_suffix);
             }
             let mut next_suffix = adapter.FirstDnsSuffix;

@@ -1,5 +1,3 @@
-#![windows_subsystem = "windows"]
-
 use crate::runner::{start_runner, RunReason};
 use crate::tray::{run_tray, TrayProperties};
 use log::LevelFilter;

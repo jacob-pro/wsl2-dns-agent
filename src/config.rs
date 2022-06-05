@@ -25,6 +25,10 @@ pub struct DistributionSetting {
     /// If the distribution was previously Stopped, then shutdown once the DNS update is complete
     #[serde(default)]
     pub restore_state: bool,
+    /// Automatically patch /etc/wsl.conf to disable generateResolvConf
+    /// Note this will trigger a restart of the distribution
+    #[serde(default = "r#true")]
+    pub patch_wsl_conf: bool,
 }
 
 pub fn r#true() -> bool {
