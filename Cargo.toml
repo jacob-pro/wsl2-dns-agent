@@ -2,6 +2,10 @@
 name = "wsl2-dns-agent"
 version = "0.1.0"
 edition = "2021"
+license = "GPL-3.0"
+description = "An agent that automatically patches your WSL2 DNS configuration for users of Cisco AnyConnect (or similar VPNs)"
+repository = "https://github.com/jacob-pro/wsl2-dns-agent"
+homepage = "https://github.com/jacob-pro/wsl2-dns-agent"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -14,12 +18,16 @@ serde = { version = "1.0.137", features = ["derive"] }
 simplelog = "0.12.0"
 thiserror = "1.0.31"
 toml = "0.5.9"
-win32-utils = { path = "../win32-utils", features = ["net"] }
+win32-utils = { path = "../win32-utils", features = ["net", "window"] }
 
 [dependencies.windows]
 version = "0.37.0"
 features = [
     "Win32_Foundation",
     "Win32_Networking_WinSock",
-    "Win32_NetworkManagement_IpHelper"
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+    "Win32_Graphics_Gdi"
 ]

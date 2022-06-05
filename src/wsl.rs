@@ -13,13 +13,13 @@ pub struct WslDistribution {
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("IoError running command: {0}")]
-    IoError(
+    Io(
         #[source]
         #[from]
         std::io::Error,
     ),
     #[error("Status {code}, stderr: {stderr}")]
-    StdErr { code: i32, stderr: String },
+    BadStatus { code: i32, stderr: String },
     #[error("Unreadable utf8: {0}")]
     UnreadableUtf8(
         #[source]
@@ -51,7 +51,7 @@ pub fn get_distributions() -> Result<Vec<WslDistribution>, Error> {
         .output()?;
     if !output.status.success() {
         let stderr = String::from_utf16(&to_u16(&output.stderr))?;
-        return Err(Error::StdErr {
+        return Err(Error::BadStatus {
             code: output.status.code().unwrap_or_default(),
             stderr,
         });
@@ -61,7 +61,7 @@ pub fn get_distributions() -> Result<Vec<WslDistribution>, Error> {
         .lines()
         .skip(1)
         .map(|mut line| {
-            if line.starts_with("*") {
+            if line.starts_with('*') {
                 line = &line[1..];
             }
             let components = line.split_whitespace().collect::<Vec<_>>();

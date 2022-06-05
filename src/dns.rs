@@ -180,7 +180,7 @@ pub enum Error {
 
 impl Error {
     /// Some errors should be retried
-    pub fn to_backoff(self) -> backoff::Error<Self> {
+    pub fn into_backoff(self) -> backoff::Error<Self> {
         match &self {
             Error::RouteInterfaceMismatch { .. } => self.into(),
             Error::GetAdaptersAddressesOverflow { .. } => self.into(),
@@ -262,7 +262,7 @@ pub fn get_configuration() -> Result<DnsConfiguration, Error> {
                 suffixes: dns_suffixes.into_iter().unique().collect(),
             })
         }
-        .map_err(Error::to_backoff)
+        .map_err(Error::into_backoff)
     };
     let b = ExponentialBackoffBuilder::new()
         .with_initial_interval(Duration::from_millis(50))

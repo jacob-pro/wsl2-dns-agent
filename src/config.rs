@@ -28,7 +28,7 @@ pub struct DistributionSetting {
 }
 
 pub fn r#true() -> bool {
-    return true;
+    true
 }
 
 impl Config {
