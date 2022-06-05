@@ -1,7 +1,7 @@
 use crate::{RunReason, APP_NAME};
 use std::path::PathBuf;
 use std::sync::mpsc;
-use win32_utils::error::check_error;
+use win32_utils::error::{check_error, CheckError};
 use win32_utils::macros::LOWORD;
 use win32_utils::str::ToWin32Str;
 use win32_utils::window::WindowDataExtension;
@@ -37,26 +37,25 @@ pub fn run_tray(properties: TrayProperties) {
             lpszClassName: PCWSTR(name.as_mut_ptr()),
             ..Default::default()
         };
-        let atom = check_error(|| RegisterClassW(&window_class)).unwrap();
+        let atom = RegisterClassW(&window_class).check_error().unwrap();
 
         // Create Window
         let tray_name = "tray".to_wchar();
-        let hwnd = check_error(|| {
-            CreateWindowExW(
-                WINDOW_EX_STYLE(0),
-                PCWSTR(atom as *mut u16),
-                PCWSTR(tray_name.as_ptr()),
-                WS_OVERLAPPEDWINDOW,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                HWND::default(),
-                HMENU::default(),
-                hinstance,
-                std::ptr::null_mut(),
-            )
-        })
+        let hwnd = CreateWindowExW(
+            WINDOW_EX_STYLE(0),
+            PCWSTR(atom as *mut u16),
+            PCWSTR(tray_name.as_ptr()),
+            WS_OVERLAPPEDWINDOW,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            HWND::default(),
+            HMENU::default(),
+            hinstance,
+            std::ptr::null_mut(),
+        )
+        .check_error()
         .unwrap();
 
         // Register Window data

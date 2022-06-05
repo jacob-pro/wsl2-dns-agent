@@ -79,3 +79,14 @@ pub fn get_distributions() -> Result<Vec<WslDistribution>, Error> {
         .collect::<Result<Vec<_>, _>>()?;
     Ok(dist)
 }
+
+impl WslDistribution {
+    pub fn read_wsl_conf(&self) {
+        // let output = Command::new("wsl.exe")
+        //     .arg("--distribution")
+        //     .arg(&self.name)
+        //     .arg("cat")
+        //     .arg("/etc/wsl.conf")
+        //     .output()?;
+    }
+}

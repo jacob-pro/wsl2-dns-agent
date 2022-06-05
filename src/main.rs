@@ -8,11 +8,15 @@ use std::ffi::c_void;
 use std::fs;
 use std::fs::File;
 use std::sync::mpsc::Sender;
-use windows::Win32::Foundation::{BOOLEAN, HANDLE};
+use win32_utils::instance::UniqueInstance;
+use win32_utils::str::ToWin32Str;
+use windows::core::PCWSTR;
+use windows::Win32::Foundation::{BOOLEAN, HANDLE, HWND};
 use windows::Win32::NetworkManagement::IpHelper::{
     NotifyRouteChange2, MIB_IPFORWARD_ROW2, MIB_NOTIFICATION_TYPE,
 };
 use windows::Win32::Networking::WinSock::AF_UNSPEC;
+use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONSTOP, MB_OK};
 
 mod config;
 mod dns;
@@ -23,6 +27,13 @@ mod wsl;
 pub const APP_NAME: &str = "WSL2 DNS Agent";
 
 fn main() {
+    set_panic();
+    let _unique = match UniqueInstance::acquire_unique_to_session(APP_NAME) {
+        Ok(u) => u,
+        Err(win32_utils::instance::Error::AlreadyExists) => panic!("Application already running"),
+        Err(e) => panic!("{}", e),
+    };
+
     // Setup logging to "AppData\Local\WSL2 DNS Agent\log.txt"
     let local_appdata = dirs::data_local_dir().unwrap().join(APP_NAME);
     fs::create_dir_all(&local_appdata).unwrap();
@@ -69,4 +80,19 @@ unsafe extern "system" fn callback(
     log::info!("NotifyRouteChange called");
     let tx = &*(callercontext as *const Sender<RunReason>);
     tx.send(RunReason::RouteChange).ok();
+}
+
+fn set_panic() {
+    let before = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| unsafe {
+        before(info);
+        let title = "Fatal Error".to_wchar();
+        let text = format!("{}", info).to_wchar();
+        MessageBoxW(
+            HWND::default(),
+            PCWSTR(text.as_ptr()),
+            PCWSTR(title.as_ptr()),
+            MB_OK | MB_ICONSTOP,
+        );
+    }));
 }
