@@ -206,60 +206,63 @@ pub struct DnsConfiguration {
 
 pub fn get_configuration() -> Result<DnsConfiguration, Error> {
     let op = || {
-        let routes = get_internet_routes()?;
-        let adapters = get_adapters()?;
-        // Match the route interface index with an adapter index
-        let mut grouped = routes
-            .iter()
-            .map(|r| {
-                match r.destination_prefix_ip {
-                    IpAddr::V4(_) => adapters
-                        .iter()
-                        .find(|a| a.ipv4_interface_index.eq(&r.interface_index)),
-                    IpAddr::V6(_) => adapters
-                        .iter()
-                        .find(|a| a.ipv6_interface_index.eq(&r.interface_index)),
-                }
-                .ok_or(Error::RouteInterfaceMismatch {
-                    interface_index: r.interface_index,
+        {
+            let routes = get_internet_routes()?;
+            let adapters = get_adapters()?;
+            // Match the route interface index with an adapter index
+            let mut grouped = routes
+                .iter()
+                .map(|r| {
+                    match r.destination_prefix_ip {
+                        IpAddr::V4(_) => adapters
+                            .iter()
+                            .find(|a| a.ipv4_interface_index.eq(&r.interface_index)),
+                        IpAddr::V6(_) => adapters
+                            .iter()
+                            .find(|a| a.ipv6_interface_index.eq(&r.interface_index)),
+                    }
+                    .ok_or(Error::RouteInterfaceMismatch {
+                        interface_index: r.interface_index,
+                    })
+                    .map(|a| RouteAndAdapter {
+                        route: r,
+                        adapter: a,
+                    })
                 })
-                .map(|a| RouteAndAdapter {
-                    route: r,
-                    adapter: a,
-                })
+                .collect::<Result<Vec<_>, Error>>()?;
+            // Sort by the lowest route metrics
+            grouped.sort_by_key(|r| r.metric_sum());
+            // Get the best routes for IPv4 and IPv6 internets respectively
+            let best_v4 = grouped
+                .iter()
+                .find(|g| g.route.destination_prefix_ip.is_ipv4());
+            if let Some(best_v4) = best_v4 {
+                println!("IPv4: {}", best_v4);
+            }
+            let best_v6 = grouped
+                .iter()
+                .find(|g| g.route.destination_prefix_ip.is_ipv6());
+            if let Some(best_v6) = best_v6 {
+                println!("IPv6: {}", best_v6);
+            }
+            // Collect the IPv4 and then IPv6 dns configurations
+            let mut dns_servers = Vec::new();
+            let mut dns_suffixes = Vec::new();
+            best_v4.iter().chain(best_v6.iter()).for_each(|g| {
+                g.adapter.dns_servers.iter().for_each(|d| {
+                    dns_servers.push(d.to_owned());
+                });
+                g.adapter.dns_suffixes.iter().for_each(|d| {
+                    dns_suffixes.push(d.to_owned());
+                });
+            });
+            // Ensure servers and suffixes are unique (preserving order)
+            Ok(DnsConfiguration {
+                servers: dns_servers.into_iter().unique().collect(),
+                suffixes: dns_suffixes.into_iter().unique().collect(),
             })
-            .collect::<Result<Vec<_>, Error>>()?;
-        // Sort by the lowest route metrics
-        grouped.sort_by_key(|r| r.metric_sum());
-        // Get the best routes for IPv4 and IPv6 internets respectively
-        let best_v4 = grouped
-            .iter()
-            .find(|g| g.route.destination_prefix_ip.is_ipv4());
-        if let Some(best_v4) = best_v4 {
-            println!("IPv4: {}", best_v4);
         }
-        let best_v6 = grouped
-            .iter()
-            .find(|g| g.route.destination_prefix_ip.is_ipv6());
-        if let Some(best_v6) = best_v6 {
-            println!("IPv6: {}", best_v6);
-        }
-        // Collect the IPv4 and then IPv6 dns configurations
-        let mut dns_servers = Vec::new();
-        let mut dns_suffixes = Vec::new();
-        best_v4.iter().chain(best_v6.iter()).for_each(|g| {
-            g.adapter.dns_servers.iter().for_each(|d| {
-                dns_servers.push(d.to_owned());
-            });
-            g.adapter.dns_suffixes.iter().for_each(|d| {
-                dns_suffixes.push(d.to_owned());
-            });
-        });
-        // Ensure servers and suffixes are unique (preserving order)
-        Ok(DnsConfiguration {
-            servers: dns_servers.into_iter().unique().collect(),
-            suffixes: dns_suffixes.into_iter().unique().collect(),
-        })
+        .map_err(Error::to_backoff)
     };
     let b = ExponentialBackoffBuilder::new()
         .with_initial_interval(Duration::from_millis(50))
