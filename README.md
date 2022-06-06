@@ -5,6 +5,8 @@
 An agent that automatically patches your WSL2 DNS configuration when using Cisco AnyConnect (or similar VPNs that block
 split-tunneling).
 
+Thanks to @pyther for the [inspiration for this tool](https://gist.github.com/pyther/b7c03579a5ea55fe431561b502ec1ba8).
+
 ## How it works
 
 1. The agent detects when you connect/disconnect from a VPN.
