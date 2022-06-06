@@ -10,8 +10,8 @@ use windows::core::PCWSTR;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Shell::{
-    Shell_NotifyIconW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_SHOWTIP, NIF_TIP, NIM_ADD, NIM_DELETE,
-    NIM_MODIFY, NIM_SETVERSION, NOTIFYICONDATAW, NOTIFYICON_VERSION_4,
+    Shell_NotifyIconW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NIM_MODIFY,
+    NIM_SETVERSION, NOTIFYICONDATAW, NOTIFYICON_VERSION_4,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateIconFromResource, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW,
@@ -89,21 +89,20 @@ impl Tray {
             .unwrap();
 
             // Create tray icon
-            let mut tray_icon = &mut window_data.icon;
-            let mut name = APP_NAME.to_wchar();
-            name.resize(tray_icon.szTip.len(), 0);
-            let bytes = &name[..tray_icon.szTip.len()];
+            window_data.icon.cbSize = size_of_val(&window_data.icon) as u32;
+            window_data.icon.hWnd = hwnd;
+            window_data.icon.hIcon = hicon;
+            window_data.icon.uCallbackMessage = CALLBACK_MSG;
+            APP_NAME
+                .copy_to_wchar_buffer(&mut window_data.icon.szTip)
+                .unwrap();
+            window_data.icon.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+            window_data.icon.Anonymous.uVersion = NOTIFYICON_VERSION_4;
 
-            tray_icon.cbSize = size_of_val(&tray_icon) as u32;
-            tray_icon.hWnd = hwnd;
-            tray_icon.hIcon = hicon;
-            tray_icon.uCallbackMessage = CALLBACK_MSG;
-            tray_icon.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
-            tray_icon.szTip.copy_from_slice(bytes);
-            tray_icon.Anonymous.uVersion = NOTIFYICON_VERSION_4;
-
-            Shell_NotifyIconW(NIM_ADD, tray_icon).ok().unwrap();
-            Shell_NotifyIconW(NIM_SETVERSION, tray_icon).ok().unwrap();
+            Shell_NotifyIconW(NIM_ADD, &window_data.icon).ok().unwrap();
+            Shell_NotifyIconW(NIM_SETVERSION, &window_data.icon)
+                .ok()
+                .unwrap();
 
             Tray(window_data)
         }
@@ -162,7 +161,7 @@ unsafe extern "system" fn tray_window_proc(
                 _ => {}
             },
             NOTIFY_DNS_UPDATED => {
-                properties.show_notification();
+                properties.show_notification("Updated WSL2 DNS configuration");
             }
             _ => {}
         }
@@ -171,24 +170,16 @@ unsafe extern "system" fn tray_window_proc(
 }
 
 impl TrayProperties {
-    fn show_notification(&mut self) {
+    fn show_notification(&mut self, message: &str) {
         unsafe {
-            self.icon.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_SHOWTIP | NIF_INFO;
-            self.icon.Anonymous.uTimeout = 1000;
+            // NIF_INFO = Display a balloon notification
+            self.icon.uFlags = NIF_INFO;
             self.icon.dwInfoFlags = 0;
-
-            let mut msg = "balloon".to_wchar();
-            msg.resize(self.icon.szInfoTitle.len(), 0);
-            let bytes = &msg[..self.icon.szInfoTitle.len()];
-            self.icon.szInfoTitle.copy_from_slice(bytes);
-
-            let mut msg = "balloon".to_wchar();
-            msg.resize(self.icon.szInfo.len(), 0);
-            let bytes = &msg[..self.icon.szInfo.len()];
-            self.icon.szInfo.copy_from_slice(bytes);
-
+            APP_NAME
+                .copy_to_wchar_buffer(&mut self.icon.szInfoTitle)
+                .unwrap();
+            message.copy_to_wchar_buffer(&mut self.icon.szInfo).unwrap();
             Shell_NotifyIconW(NIM_MODIFY, &self.icon).ok().unwrap();
-            println!("attempting to show notification");
         }
     }
 }

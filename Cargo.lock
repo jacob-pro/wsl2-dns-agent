@@ -352,6 +352,7 @@ checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 [[package]]
 name = "win32-utils"
 version = "0.1.0"
+source = "git+https://github.com/jacob-pro/win32-utils#b3de3551950cd0272c238f518edbc633349bc4c8"
 dependencies = [
  "thiserror",
  "windows",

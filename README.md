@@ -1,5 +1,7 @@
 # WSL2 DNS Agent for Cisco AnyConnect Users
 
+[![Build status](https://github.com/jacob-pro/wsl2-dns-agent/actions/workflows/rust.yml/badge.svg)](https://github.com/jacob-pro/wsl2-dns-agent/actions)
+
 An agent that automatically patches your WSL2 DNS configuration when using Cisco AnyConnect (or similar VPNs that block
 split-tunneling).
 
