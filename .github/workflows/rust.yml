@@ -27,3 +27,21 @@ jobs:
 
       - name: Cargo Sort Check
         run: cargo install cargo-sort --debug && cargo-sort --check --workspace
+
+  release:
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+    runs-on: windows-latest
+    needs: [build]
+    steps:
+      - name: Set git to checkout as is, commit LF
+        run: git config --global core.autocrlf input
+
+      - uses: actions/checkout@v2
+
+      - name: Compile Release
+        run: cargo build --release
+
+      - name: Github Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./target/release/wsl2-dns-agent.exe
