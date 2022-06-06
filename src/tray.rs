@@ -110,7 +110,7 @@ impl Tray {
     }
 
     pub fn get_handle(&self) -> TrayHandle {
-        TrayHandle(self.0.window.clone())
+        TrayHandle(self.0.window)
     }
 
     pub fn run(self) {

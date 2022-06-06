@@ -9,6 +9,9 @@ use std::thread::spawn;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
+const RESOLV_CONF: &str = "/etc/resolv.conf";
+const WSL_CONF: &str = "/etc/wsl.conf";
+
 #[derive(Debug)]
 pub enum RunReason {
     Startup,
@@ -84,9 +87,10 @@ fn update_distribution(
     config: &DistributionSetting,
     resolv: &str,
 ) -> Result<(), Error> {
+    // Ensure that generateResolvConf is disabled, otherwise further steps will fail
     if config.patch_wsl_conf {
-        let wsl_conf = distribution.read_wsl_conf()?;
         let mut config = Ini::new_cs();
+        let wsl_conf = distribution.read_file(WSL_CONF).ok();
         let needs_update = if let Some(wsl_conf) = wsl_conf {
             config.read(wsl_conf).map_err(Error::WslConfError)?;
             config
@@ -97,18 +101,28 @@ fn update_distribution(
             true
         };
         if needs_update {
-            log::warn!("Updating /etc/wsl.conf for {}", distribution.name);
+            log::warn!("Updating {} for {}", WSL_CONF, distribution.name);
             config.set("network", "generateResolvConf", Some("false".to_string()));
             let new_conf = config.writes().replace("\r\n", "\n");
-            distribution.write_file("/etc/wsl.conf", &new_conf)?;
+            distribution.write_file(WSL_CONF, &new_conf)?;
             // Distribution needs to be restarted to take effect
             distribution.terminate()?;
         }
     }
-    distribution.write_file("/etc/resolv.conf", resolv)?;
+
+    // Replace the /etc/resolv.conf file
+    // Removing read only is expected to fail if the file doesn't exist
+    // Read only needs to be set because of bug:
+    // https://github.com/microsoft/WSL/issues/6977
+    distribution.set_read_only(RESOLV_CONF, false).ok();
+    distribution.write_file(RESOLV_CONF, resolv)?;
+    distribution.set_read_only(RESOLV_CONF, true).ok();
+
+    // Optionally shutdown the WSL2 distribution once finished
     if config.restore_state && distribution.was_stopped() {
         log::info!("Terminating {}", distribution.name);
         distribution.terminate()?;
     }
+
     Ok(())
 }

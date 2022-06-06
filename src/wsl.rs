@@ -100,22 +100,32 @@ fn check_wsl_output(output: &Output) -> Result<(), Error> {
 }
 
 impl WslDistribution {
-    pub fn read_wsl_conf(&self) -> Result<Option<String>, Error> {
+    pub fn read_file(&self, path: &str) -> Result<String, Error> {
         let output = Command::new("wsl.exe")
             .arg("--distribution")
             .arg(&self.name)
+            .arg("--user")
+            .arg("root")
             .arg("cat")
-            .arg("/etc/wsl.conf")
+            .arg(path)
             .output()?;
-        if !output.status.success() {
-            if let Ok(utf8) = String::from_utf8(output.stderr.clone()) {
-                if utf8.contains("No such file or directory") {
-                    return Ok(None);
-                }
-            }
-        }
         check_wsl_output(&output)?;
-        Ok(Some(String::from_utf8(output.stdout)?))
+        Ok(String::from_utf8(output.stdout)?)
+    }
+
+    pub fn set_read_only(&self, path: &str, read_only: bool) -> Result<(), Error> {
+        let arg = if read_only { "+i" } else { "-i" };
+        let output = Command::new("wsl.exe")
+            .arg("--distribution")
+            .arg(&self.name)
+            .arg("--user")
+            .arg("root")
+            .arg("chattr")
+            .arg(arg)
+            .arg(path)
+            .output()?;
+        check_wsl_output(&output)?;
+        Ok(())
     }
 
     pub fn write_file(&self, path: &str, contents: &str) -> Result<(), Error> {
