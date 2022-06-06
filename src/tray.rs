@@ -1,32 +1,39 @@
 use crate::{RunReason, APP_NAME};
 use std::mem::size_of_val;
 use std::path::PathBuf;
+use std::ptr::null;
 use std::sync::mpsc;
 use win32_utils::error::{check_error, CheckError};
 use win32_utils::macros::LOWORD;
 use win32_utils::str::ToWin32Str;
 use win32_utils::window::WindowDataExtension;
 use windows::core::PCWSTR;
-use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Shell::{
     Shell_NotifyIconW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NIM_MODIFY,
-    NIM_SETVERSION, NOTIFYICONDATAW, NOTIFYICON_VERSION_4,
+    NIM_SETVERSION, NIN_SELECT, NOTIFYICONDATAW, NOTIFYICON_VERSION_4,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateIconFromResource, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW,
-    RegisterClassW, SendMessageW, SetWindowLongPtrW, TranslateMessage, CW_USEDEFAULT,
-    GWLP_USERDATA, HMENU, MSG, WINDOW_EX_STYLE, WM_APP, WM_LBUTTONUP, WM_RBUTTONUP, WNDCLASSW,
+    CreateIconFromResource, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DispatchMessageW,
+    GetCursorPos, GetMessageW, InsertMenuW, PostQuitMessage, RegisterClassW, SendMessageW,
+    SetForegroundWindow, SetWindowLongPtrW, TrackPopupMenu, TranslateMessage, CW_USEDEFAULT,
+    GWLP_USERDATA, HMENU, MF_BYPOSITION, MF_STRING, MSG, TPM_BOTTOMALIGN, TPM_LEFTALIGN,
+    TPM_LEFTBUTTON, WINDOW_EX_STYLE, WM_APP, WM_COMMAND, WM_CONTEXTMENU, WNDCLASSW,
     WS_OVERLAPPEDWINDOW,
 };
 
 const ICON_BYTES: &[u8] = include_bytes!("../assets/icon.png");
 
-const CALLBACK_MSG: u32 = WM_APP + 1;
+const IDM_EXIT: usize = 100;
+const IDM_SHOW_LOG: usize = 101;
+const IDM_UPDATE_DNS: usize = 102;
+
+const TRAY_ICON_CALLBACK: u32 = WM_APP + 1;
 const NOTIFY_DNS_UPDATED: u32 = WM_APP + 2;
 
 struct TrayProperties {
-    _log_file_path: PathBuf,
+    log_file_path: PathBuf,
     sender: mpsc::Sender<RunReason>,
     window: HWND,
     icon: NOTIFYICONDATAW,
@@ -69,7 +76,7 @@ impl Tray {
 
             // Register Window data
             let mut window_data = Box::new(TrayProperties {
-                _log_file_path: log_file_path,
+                log_file_path,
                 sender,
                 window: hwnd,
                 icon: NOTIFYICONDATAW::default(),
@@ -92,7 +99,7 @@ impl Tray {
             window_data.icon.cbSize = size_of_val(&window_data.icon) as u32;
             window_data.icon.hWnd = hwnd;
             window_data.icon.hIcon = hicon;
-            window_data.icon.uCallbackMessage = CALLBACK_MSG;
+            window_data.icon.uCallbackMessage = TRAY_ICON_CALLBACK;
             APP_NAME
                 .copy_to_wchar_buffer(&mut window_data.icon.szTip)
                 .unwrap();
@@ -154,14 +161,17 @@ unsafe extern "system" fn tray_window_proc(
 ) -> LRESULT {
     if let Some(properties) = hwnd.get_user_data::<TrayProperties>() {
         match msg {
-            CALLBACK_MSG => match LOWORD(l_param.0 as u32) {
-                WM_LBUTTONUP | WM_RBUTTONUP => {
-                    properties.sender.send(RunReason::TrayButton).ok();
+            TRAY_ICON_CALLBACK => match LOWORD(l_param.0 as u32) {
+                NIN_SELECT | WM_CONTEXTMENU => {
+                    properties.show_tray_menu();
                 }
                 _ => {}
             },
             NOTIFY_DNS_UPDATED => {
                 properties.show_notification("Updated WSL2 DNS configuration");
+            }
+            WM_COMMAND => {
+                properties.handle_command(w_param);
             }
             _ => {}
         }
@@ -170,16 +180,67 @@ unsafe extern "system" fn tray_window_proc(
 }
 
 impl TrayProperties {
-    fn show_notification(&mut self, message: &str) {
-        unsafe {
-            // NIF_INFO = Display a balloon notification
-            self.icon.uFlags = NIF_INFO;
-            self.icon.dwInfoFlags = 0;
-            APP_NAME
-                .copy_to_wchar_buffer(&mut self.icon.szInfoTitle)
-                .unwrap();
-            message.copy_to_wchar_buffer(&mut self.icon.szInfo).unwrap();
-            Shell_NotifyIconW(NIM_MODIFY, &self.icon).ok().unwrap();
+    unsafe fn show_notification(&mut self, message: &str) {
+        // NIF_INFO = Display a balloon notification
+        self.icon.uFlags = NIF_INFO;
+        self.icon.dwInfoFlags = 0;
+        APP_NAME
+            .copy_to_wchar_buffer(&mut self.icon.szInfoTitle)
+            .unwrap();
+        message.copy_to_wchar_buffer(&mut self.icon.szInfo).unwrap();
+        Shell_NotifyIconW(NIM_MODIFY, &self.icon).ok().unwrap();
+    }
+
+    unsafe fn show_tray_menu(&self) {
+        let mut pt = POINT::default();
+        GetCursorPos(&mut pt);
+        let hmenu = CreatePopupMenu().unwrap();
+        let exit_msg = "Exit".to_wchar();
+        InsertMenuW(
+            hmenu,
+            0,
+            MF_BYPOSITION | MF_STRING,
+            IDM_EXIT,
+            PCWSTR(exit_msg.as_ptr()),
+        );
+        let view_log_msg = "View Log".to_wchar();
+        InsertMenuW(
+            hmenu,
+            0,
+            MF_BYPOSITION | MF_STRING,
+            IDM_SHOW_LOG,
+            PCWSTR(view_log_msg.as_ptr()),
+        );
+        let reapply_dns_msg = "Reapply DNS".to_wchar();
+        InsertMenuW(
+            hmenu,
+            0,
+            MF_BYPOSITION | MF_STRING,
+            IDM_UPDATE_DNS,
+            PCWSTR(reapply_dns_msg.as_ptr()),
+        );
+        SetForegroundWindow(self.window);
+        TrackPopupMenu(
+            hmenu,
+            TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_BOTTOMALIGN,
+            pt.x,
+            pt.y,
+            0,
+            self.window,
+            null(),
+        );
+    }
+
+    unsafe fn handle_command(&self, w_param: WPARAM) {
+        match w_param.0 {
+            IDM_EXIT => PostQuitMessage(0),
+            IDM_UPDATE_DNS => {
+                self.sender.send(RunReason::TrayButton).ok();
+            }
+            IDM_SHOW_LOG => {
+                open::that(&self.log_file_path).ok();
+            }
+            _ => {}
         }
     }
 }
