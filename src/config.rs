@@ -25,7 +25,7 @@ pub struct DistributionSetting {
     /// If the distribution was previously Stopped, then shutdown once the DNS update is complete
     /// Note: This option is probably not needed on Windows 11 (because of vmIdleTimeout)
     #[serde(default)]
-    pub restore_state: bool,
+    pub shutdown: bool,
     /// Automatically patch /etc/wsl.conf to disable generateResolvConf
     /// Note this will trigger a restart of the distribution
     #[serde(default = "r#true")]

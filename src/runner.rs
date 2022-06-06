@@ -74,9 +74,12 @@ fn update_dns(config: &Config) -> Result<(), Error> {
         .collect::<Vec<_>>();
     log::info!("Found {} WSL2 distributions", wsl.len());
     for d in wsl {
-        log::info!("Updating DNS for {}", d.name);
-        if let Err(e) = update_distribution(&d, config.get_distribution_setting(&d.name), &resolv) {
-            log::error!("Failed to update DNS for {}, due to: {}", d.name, e);
+        let dist_config = config.get_distribution_setting(&d.name);
+        if dist_config.apply_dns {
+            log::info!("Updating DNS for {}", d.name);
+            if let Err(e) = update_distribution(&d, dist_config, &resolv) {
+                log::error!("Failed to update DNS for {}, due to: {}", d.name, e);
+            }
         }
     }
     Ok(())
@@ -119,7 +122,7 @@ fn update_distribution(
     distribution.set_read_only(RESOLV_CONF, true).ok();
 
     // Optionally shutdown the WSL2 distribution once finished
-    if config.restore_state && distribution.was_stopped() {
+    if config.shutdown && distribution.was_stopped() {
         log::info!("Terminating {}", distribution.name);
         distribution.terminate()?;
     }
