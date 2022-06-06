@@ -1,5 +1,6 @@
 use crate::config::{Config, DistributionSetting};
 use crate::dns;
+use crate::tray::TrayHandle;
 use crate::wsl;
 use crate::wsl::WslDistribution;
 use configparser::ini::Ini;
@@ -21,7 +22,7 @@ pub fn channel() -> (mpsc::Sender<RunReason>, mpsc::Receiver<RunReason>) {
     mpsc::channel()
 }
 
-pub fn start_runner(config: Config, rx: mpsc::Receiver<RunReason>) {
+pub fn start_runner(config: Config, rx: mpsc::Receiver<RunReason>, tray: TrayHandle) {
     spawn(move || loop {
         let msg = rx.recv().unwrap();
         let timeout = Instant::now() + DEBOUNCE;
@@ -35,6 +36,9 @@ pub fn start_runner(config: Config, rx: mpsc::Receiver<RunReason>) {
         log::info!("Running due to {msg:?} message (and {debounced} debounced messages)");
         if let Err(err) = update_dns(&config) {
             log::error!("Error running: {err}");
+        }
+        if config.show_notifications {
+            tray.notify_dns_updated();
         }
     });
 }

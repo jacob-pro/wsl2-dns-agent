@@ -1,5 +1,5 @@
 use crate::runner::{start_runner, RunReason};
-use crate::tray::{run_tray, TrayProperties};
+use crate::tray::Tray;
 use log::LevelFilter;
 use simplelog::WriteLogger;
 use std::ffi::c_void;
@@ -58,16 +58,16 @@ fn main() {
         .unwrap();
     }
 
+    // Create tray
+    let tray = Tray::new(log_path, tx.clone());
+
     // Apply DNS changes on notifications
-    start_runner(config, rx);
+    start_runner(config, rx, tray.get_handle());
     // Run automatically on startup
     tx.send(RunReason::Startup).ok();
 
     // Run Windows tray icon
-    run_tray(TrayProperties {
-        log_file_path: log_path,
-        sender: tx,
-    })
+    tray.run();
 }
 
 unsafe extern "system" fn callback(
