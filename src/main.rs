@@ -6,6 +6,7 @@ use std::ffi::c_void;
 use std::fs;
 use std::fs::File;
 use std::sync::mpsc::Sender;
+use win32_utils::console::hide_console_window_if_in_process;
 use win32_utils::instance::UniqueInstance;
 use win32_utils::str::ToWin32Str;
 use windows::core::PCWSTR;
@@ -26,6 +27,8 @@ pub const APP_NAME: &str = "WSL2 DNS Agent";
 
 fn main() {
     set_panic();
+    hide_console_window_if_in_process();
+
     let _unique = match UniqueInstance::acquire_unique_to_session(APP_NAME) {
         Ok(u) => u,
         Err(win32_utils::instance::Error::AlreadyExists) => panic!("Application already running"),

@@ -20,8 +20,8 @@ serde = { version = "1.0.137", features = ["derive"] }
 simplelog = "0.12.0"
 thiserror = "1.0.31"
 toml = "0.5.9"
-#win32-utils = { features = ["net", "window", "instance"], git = "https://github.com/jacob-pro/win32-utils" }
-win32-utils = { path = "../win32-utils", features = ["net", "window", "instance"] }
+#win32-utils = { git = "https://github.com/jacob-pro/win32-utils", features = ["net", "window", "instance", "console"] }
+win32-utils = { path = "../win32-utils", features = ["net", "window", "instance", "console"] }
 
 [dependencies.windows]
 version = "0.37.0"
