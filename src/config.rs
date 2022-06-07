@@ -43,20 +43,27 @@ impl Config {
         fs::create_dir_all(&roaming_appdata).unwrap();
         let config_path = roaming_appdata.join("config.toml");
         if !config_path.exists() {
-            log::info!("Config file doesn't exist, creating default");
+            log::warn!("Config file doesn't exist, creating default");
             let new = Self::default();
             new.save(&config_path);
             return new;
         }
-        match fs::read_to_string(config_path) {
-            Ok(data) => match toml::from_str(&data) {
-                Ok(config) => return config,
-                Err(err) => log::error!("Unable to parse config file: {err}"),
-            },
-            Err(err) => log::error!("Unable to read config file: {err}"),
+        let contents = match fs::read_to_string(&config_path) {
+            Err(e) => panic!(
+                "Unable to read config file: {}: {}",
+                config_path.display(),
+                e
+            ),
+            Ok(s) => s,
+        };
+        match toml::from_str(&contents) {
+            Err(e) => panic!(
+                "Unable to parse config file: {}: {}",
+                config_path.display(),
+                e
+            ),
+            Ok(config) => config,
         }
-        log::warn!("Falling back to config defaults");
-        Self::default()
     }
 
     fn save(&self, path: &PathBuf) {

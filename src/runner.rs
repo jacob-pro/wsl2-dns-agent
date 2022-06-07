@@ -37,11 +37,13 @@ pub fn start_runner(config: Config, rx: mpsc::Receiver<RunReason>, tray: TrayHan
             debounced += 1;
         }
         log::info!("Running due to {msg:?} message (and {debounced} debounced messages)");
-        if let Err(err) = update_dns(&config) {
-            log::error!("Error running: {err}");
-        }
-        if config.show_notifications {
-            tray.notify_dns_updated();
+        match update_dns(&config) {
+            Err(e) => log::error!("Error running: {e}"),
+            Ok(_) => {
+                if config.show_notifications {
+                    tray.notify_dns_updated();
+                }
+            }
         }
     });
 }
@@ -119,7 +121,7 @@ fn update_distribution(
     // https://github.com/microsoft/WSL/issues/6977
     distribution.set_read_only(RESOLV_CONF, false).ok();
     distribution.write_file(RESOLV_CONF, resolv)?;
-    distribution.set_read_only(RESOLV_CONF, true).ok();
+    distribution.set_read_only(RESOLV_CONF, true)?;
 
     // Optionally shutdown the WSL2 distribution once finished
     if config.shutdown && distribution.was_stopped() {

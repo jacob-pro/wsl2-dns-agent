@@ -78,7 +78,6 @@ unsafe extern "system" fn callback(
     _: *const MIB_IPFORWARD_ROW2,
     _: MIB_NOTIFICATION_TYPE,
 ) {
-    log::info!("NotifyRouteChange called");
     let tx = &*(callercontext as *const Sender<RunReason>);
     tx.send(RunReason::RouteChange).ok();
 }
