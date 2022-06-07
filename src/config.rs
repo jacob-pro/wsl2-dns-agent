@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+const EXCLUDE_BY_DEFAULT: &[&str] = &["docker-desktop", "docker-desktop-data"];
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     /// Show toast notifications when DNS update is applied
@@ -13,8 +15,23 @@ pub struct Config {
     #[serde(default)]
     defaults: DistributionSetting,
     /// Per distribution settings
-    #[serde(default)]
+    #[serde(default = "default_distributions")]
     distributions: HashMap<String, DistributionSetting>,
+}
+
+fn default_distributions() -> HashMap<String, DistributionSetting> {
+    let mut map = HashMap::new();
+    for d in EXCLUDE_BY_DEFAULT {
+        map.insert(
+            d.to_string(),
+            DistributionSetting {
+                apply_dns: false,
+                shutdown: false,
+                patch_wsl_conf: false,
+            },
+        );
+    }
+    map
 }
 
 #[derive(Debug, Deserialize, Serialize)]

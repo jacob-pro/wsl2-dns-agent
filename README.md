@@ -46,3 +46,5 @@ shutdown = false
 [distributions.Ubuntu]
 apply_dns = false
 ```
+
+Note: the default configuration will ignore Docker Desktop, since the changes are unnecessary.

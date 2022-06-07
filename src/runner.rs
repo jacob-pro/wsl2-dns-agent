@@ -82,6 +82,8 @@ fn update_dns(config: &Config) -> Result<(), Error> {
             if let Err(e) = update_distribution(&d, dist_config, &resolv) {
                 log::error!("Failed to update DNS for {}, due to: {}", d.name, e);
             }
+        } else {
+            log::info!("Ignoring: {}", d.name);
         }
     }
     Ok(())
