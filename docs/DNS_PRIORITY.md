@@ -73,7 +73,7 @@ Such that Ethernet 2 is the best route (5 + 100 is less than 9999 + 50)
 
 ```powershell
 Find-NetRoute -RemoteIPAddress "8.8.8.8" | Select-Object InterfaceAlias
-Ethernet 1
+Ethernet 2
 ```
 
 The best DNS server is still on Ethernet 1:
