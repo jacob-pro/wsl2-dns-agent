@@ -89,18 +89,17 @@ So it would appear the route metrics are irrelevant.
 
 Note: Neither Ethernet adapters have an IPv6 address/route or DNS server.
 
-Initially 
-
 ```powershell
+# Ethernet 1 has a better IPv4 metric (50)
 Set-NetIPInterface -InterfaceAlias "Ethernet 1" -AddressFamily IPv4 -InterfaceMetric 50
 Set-NetIPInterface -InterfaceAlias "Ethernet 2" -AddressFamily IPv4 -InterfaceMetric 100
 
-# Ethernet 2 has the best metric of any interface:
+# However Ethernet 2 has the best metric overall (25):
 Set-NetIPInterface -InterfaceAlias "Ethernet 1" -AddressFamily IPv6 -InterfaceMetric 50
 Set-NetIPInterface -InterfaceAlias "Ethernet 2" -AddressFamily IPv6 -InterfaceMetric 25
 ```
 
-Ethernet 2 now has the highest priority DNS:
+Ethernet 2 now has the highest priority DNS (even though IPv6 isn't in use):
 
 ```powershell
 nslookup google.com
@@ -132,7 +131,7 @@ Set-NetIPInterface -InterfaceAlias "Ethernet 1" -AddressFamily IPv4 -InterfaceMe
 Set-NetIPInterface -InterfaceAlias "Ethernet 1" -AddressFamily IPv6 -InterfaceMetric 100
 ```
 
-The IPv6 DNS server is still chosen first:
+It doesn't matter, the IPv6 DNS server is still chosen first:
 
 ```powershell
 nslookup google.com
