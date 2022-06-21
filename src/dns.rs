@@ -1,11 +1,8 @@
 use crate::APP_NAME;
-use backoff::ExponentialBackoffBuilder;
 use itertools::Itertools;
-use std::fmt::{Display, Formatter};
 use std::mem::transmute;
 use std::net::IpAddr;
 use std::ptr::{null_mut, slice_from_raw_parts};
-use std::time::Duration;
 use thiserror::Error;
 use win32_utils::net::ToStdSocket;
 use win32_utils::str::FromWin32Str;
@@ -19,7 +16,6 @@ use windows::Win32::Networking::WinSock::AF_UNSPEC;
 #[derive(Debug)]
 struct Route {
     interface_index: u32,
-    metric: u32,
     destination_prefix_ip: IpAddr,
     destination_prefix_len: u8,
 }
@@ -31,8 +27,8 @@ impl Route {
     }
 }
 
-/// Returns list of routes to 0.0.0.0/0 and ::/0
-fn get_internet_routes() -> Result<Vec<Route>, Error> {
+/// Returns a list of IPv4 and IPv6 routes
+fn get_routes() -> Result<Vec<Route>, Error> {
     unsafe {
         let mut ptr = null_mut::<MIB_IPFORWARD_TABLE2>();
         GetIpForwardTable2(AF_UNSPEC.0 as u16, &mut ptr).map_err(Error::GetIpForwardTable2)?;
@@ -46,11 +42,9 @@ fn get_internet_routes() -> Result<Vec<Route>, Error> {
             .map(|idx| &table[idx as usize])
             .map(|row| Route {
                 interface_index: row.InterfaceIndex,
-                metric: row.Metric,
                 destination_prefix_ip: row.DestinationPrefix.Prefix.to_std_socket_addr().ip(),
                 destination_prefix_len: row.DestinationPrefix.PrefixLength,
             })
-            .filter(Route::is_internet_route)
             .collect::<Vec<_>>();
         FreeMibTable(transmute(ptr));
         Ok(res)
@@ -131,72 +125,21 @@ fn get_adapters() -> Result<Vec<Adapter>, Error> {
     }
 }
 
-#[derive(Debug)]
-struct RouteAndAdapter<'a> {
-    route: &'a Route,
-    adapter: &'a Adapter,
-}
-
-impl RouteAndAdapter<'_> {
-    /// "the overall metric that is used to determine the interface preference is the sum of the
-    /// route metric and the interface metric"
-    fn metric_sum(&self) -> u32 {
-        self.route.metric
-            + match self.route.destination_prefix_ip {
-                IpAddr::V4(_) => self.adapter.ipv4_metric,
-                IpAddr::V6(_) => self.adapter.ipv6_metric,
-            }
-    }
-}
-
-impl Display for RouteAndAdapter<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let m_sum = self.metric_sum();
-        let s = format!(
-            "{}/{}, interface index: {}, metric: {} ({} + {}), dns servers: {:?}, dns suffixes: {:?}",
-            self.route.destination_prefix_ip,
-            self.route.destination_prefix_len,
-            self.route.interface_index,
-            m_sum,
-            self.route.metric,
-            m_sum - self.route.metric,
-            self.adapter.dns_servers,
-            self.adapter.dns_suffixes
-        );
-        f.write_str(s.as_str())
+impl Adapter {
+    // For the purposes of DNS, the interface metric is whichever one is lowest
+    fn interface_metric(&self) -> u32 {
+        std::cmp::min(self.ipv4_metric, self.ipv6_metric)
     }
 }
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Unable to find adapter for interface: {interface_index}")]
-    RouteInterfaceMismatch { interface_index: u32 },
     #[error("Calls to GetAdaptersAddresses() returned different buffer sizes")]
     GetAdaptersAddressesOverflow,
     #[error("Call to GetIpForwardTable2() failed: {0}")]
     GetIpForwardTable2(#[source] windows::core::Error),
     #[error("Call to GetAdaptersAddresses() failed: {0}")]
     GetAdaptersAddresses(#[source] windows::core::Error),
-}
-
-impl Error {
-    /// Some errors should be retried
-    pub fn into_backoff(self) -> backoff::Error<Self> {
-        match &self {
-            Error::RouteInterfaceMismatch { .. } => self.into(),
-            Error::GetAdaptersAddressesOverflow { .. } => self.into(),
-            _ => backoff::Error::Permanent(self),
-        }
-    }
-}
-
-impl From<backoff::Error<Error>> for Error {
-    fn from(e: backoff::Error<Error>) -> Self {
-        match e {
-            backoff::Error::Permanent(e) => e,
-            backoff::Error::Transient { err, .. } => err,
-        }
-    }
 }
 
 #[derive(Debug, Default)]
@@ -206,70 +149,40 @@ pub struct DnsConfiguration {
 }
 
 pub fn get_configuration() -> Result<DnsConfiguration, Error> {
-    let op = || {
-        {
-            let routes = get_internet_routes()?;
-            let adapters = get_adapters()?;
-            // Match the route interface index with an adapter index
-            let mut grouped = routes
+    // List of routes to the internet
+    let internet_routes = get_routes()?
+        .into_iter()
+        .filter(Route::is_internet_route)
+        .collect::<Vec<_>>();
+
+    // DNS priority is determined by interface metric
+    // However we also want to exclude various system adapters such as WSL
+    // so we will filter out any adapters that have a route to the internet
+    let internet_adapters = get_adapters()?
+        .into_iter()
+        .filter(|adapter| {
+            internet_routes
                 .iter()
-                .map(|r| {
-                    match r.destination_prefix_ip {
-                        IpAddr::V4(_) => adapters
-                            .iter()
-                            .find(|a| a.ipv4_interface_index.eq(&r.interface_index)),
-                        IpAddr::V6(_) => adapters
-                            .iter()
-                            .find(|a| a.ipv6_interface_index.eq(&r.interface_index)),
-                    }
-                    .ok_or(Error::RouteInterfaceMismatch {
-                        interface_index: r.interface_index,
-                    })
-                    .map(|a| RouteAndAdapter {
-                        route: r,
-                        adapter: a,
-                    })
+                .any(|route| match route.destination_prefix_ip {
+                    IpAddr::V4(_) => route.interface_index == adapter.ipv4_interface_index,
+                    IpAddr::V6(_) => route.interface_index == adapter.ipv6_interface_index,
                 })
-                .collect::<Result<Vec<_>, Error>>()?;
-            // Sort by the lowest route metrics
-            grouped.sort_by_key(|r| r.metric_sum());
-            // Get the best routes for IPv4 and IPv6 internets respectively
-            let best_v4 = grouped
-                .iter()
-                .find(|g| g.route.destination_prefix_ip.is_ipv4());
-            if let Some(best_v4) = best_v4 {
-                log::info!("Best IPv4 Route: {}", best_v4);
-            }
-            let best_v6 = grouped
-                .iter()
-                .find(|g| g.route.destination_prefix_ip.is_ipv6());
-            if let Some(best_v6) = best_v6 {
-                log::info!("Best IPv6 Route: {}", best_v6);
-            }
-            // Collect the IPv4 and then IPv6 dns configurations
-            let mut dns_servers = Vec::new();
-            let mut dns_suffixes = Vec::new();
-            best_v4.iter().chain(best_v6.iter()).for_each(|g| {
-                g.adapter.dns_servers.iter().for_each(|d| {
-                    dns_servers.push(d.to_owned());
-                });
-                g.adapter.dns_suffixes.iter().for_each(|d| {
-                    dns_suffixes.push(d.to_owned());
-                });
-            });
-            // Ensure servers and suffixes are unique (preserving order)
-            Ok(DnsConfiguration {
-                servers: dns_servers.into_iter().unique().collect(),
-                suffixes: dns_suffixes.into_iter().unique().collect(),
-            })
-        }
-        .map_err(Error::into_backoff)
-    };
-    let b = ExponentialBackoffBuilder::new()
-        .with_initial_interval(Duration::from_millis(50))
-        .with_max_elapsed_time(Some(Duration::from_secs(1)))
-        .build();
-    backoff::retry(b, op).map_err(|e| e.into())
+        })
+        .sorted_by_key(Adapter::interface_metric)
+        .collect::<Vec<_>>();
+
+    let servers = internet_adapters
+        .iter()
+        .flat_map(|adapter| adapter.dns_servers.clone())
+        .unique()
+        .collect::<Vec<_>>();
+    let suffixes = internet_adapters
+        .iter()
+        .flat_map(|adapter| adapter.dns_suffixes.clone())
+        .unique()
+        .collect::<Vec<_>>();
+
+    Ok(DnsConfiguration { servers, suffixes })
 }
 
 impl DnsConfiguration {

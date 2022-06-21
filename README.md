@@ -27,6 +27,25 @@ Launch the application.
 
 Note: You must have the `chattr` command installed within your WSL2 distribution.
 
+## Diagnostics
+
+You can view the application log by clicking on the tray icon and "View Log".
+
+Note that this tool *should* apply DNS servers based on their priority in Windows.
+
+For example, from Windows Command Prompt try running:
+
+```cmd
+C:\Users\jdhalsey>nslookup.exe google.com
+Server:  OpenWrt.lan
+Address:  10.2.9.254
+
+Non-authoritative answer: ...
+```
+
+Therefore `10.2.9.254` will be the first server written to `/etc/resolv.conf`. If the server is not what you expected
+then please look at [the DNS guide](./docs/ROUTING.md#step-3---working-windows-dns)
+
 ## Advanced options
 
 For advanced use cases you can edit the config file in `%APPDATA%\WSL2 DNS Agent\config.toml`

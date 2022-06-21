@@ -1,6 +1,6 @@
 [package]
 name = "wsl2-dns-agent"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "GPL-3.0"
 description = "An agent that automatically patches your WSL2 DNS configuration for users of Cisco AnyConnect (or similar VPNs)"
@@ -8,7 +8,6 @@ repository = "https://github.com/jacob-pro/wsl2-dns-agent"
 homepage = "https://github.com/jacob-pro/wsl2-dns-agent"
 
 [dependencies]
-backoff = "0.4.0"
 chrono = "0.4.19"
 configparser = "3.0.0"
 dirs = "4.0.0"

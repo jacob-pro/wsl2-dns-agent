@@ -69,7 +69,7 @@ enum Error {
 fn update_dns(config: &Config) -> Result<(), Error> {
     let dns = dns::get_configuration()?;
     let resolv = dns.generate_resolv();
-    log::info!("Applying DNS config: {dns:?}");
+    log::info!("Detected Windows DNS config: {dns:?}");
     let wsl = wsl::get_distributions()?
         .into_iter()
         .filter(|d| d.version == 2)
