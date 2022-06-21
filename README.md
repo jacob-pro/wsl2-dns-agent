@@ -25,6 +25,8 @@ Save it to your startup folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs
 
 Launch the application.
 
+Note: You must have the `chattr` command installed within your WSL2 distribution.
+
 ## Advanced options
 
 For advanced use cases you can edit the config file in `%APPDATA%\WSL2 DNS Agent\config.toml`
