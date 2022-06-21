@@ -437,7 +437,7 @@ checksum = "f4dd6dc7df2d84cf7b33822ed5b86318fb1781948e9663bacd047fc9dd52259d"
 
 [[package]]
 name = "wsl2-dns-agent"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "chrono",
  "configparser",

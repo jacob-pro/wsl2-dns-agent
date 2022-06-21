@@ -42,6 +42,8 @@ fn main() {
     let log_file = File::create(&log_path).unwrap();
     WriteLogger::init(LevelFilter::Info, simplelog::Config::default(), log_file).unwrap();
 
+    log::info!("{} version: {}", APP_NAME, env!("CARGO_PKG_VERSION"));
+
     // Load config file
     let config = config::Config::load();
     log::info!("Loaded config: {:?}", config);
