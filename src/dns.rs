@@ -157,7 +157,7 @@ pub fn get_configuration() -> Result<DnsConfiguration, Error> {
 
     // DNS priority is determined by interface metric
     // However we also want to exclude various system adapters such as WSL
-    // so we will filter out any adapters that have a route to the internet
+    // so we will filter out any adapters that don't have a route to the internet
     let internet_adapters = get_adapters()?
         .into_iter()
         .filter(|adapter| {
