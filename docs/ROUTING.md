@@ -142,7 +142,7 @@ Yet if we launch an HTTP server in WSl2:
 python3 -m http.server 8000
 ```
 
-And attempt to connect to it whilst AnyConnect is running, it will fail:
+And attempt to connect to it whilst AnyConnect is running, under certain AnyConnect setups this may fail:
 
 ```powershell
 PS C:\Users\jdhalsey> curl.exe http://172.24.18.66:8000
@@ -159,3 +159,6 @@ you can use the localhost relay to work around this:
 PS C:\Users\jdhalsey> curl.exe http://localhost:8000
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 ```
+
+Your VPN administrator should however be able to fully fix this using the AnyConnect's `BypassVirtualSubnetsOnlyV4`
+options, see [Connectivity Issues with VM-based Subsystems](https://www.cisco.com/c/en/us/td/docs/security/vpn_client/anyconnect/anyconnect410/administration/guide/b-anyconnect-admin-guide-4-10/troubleshoot-anyconnect.html#Cisco_Task_in_List_GUI.dita_3a9a8101-f034-4e9b-b24a-486ee47b5e9f).
