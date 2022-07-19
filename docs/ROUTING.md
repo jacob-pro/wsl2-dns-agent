@@ -86,7 +86,7 @@ due to the VPN. Depending on how many servers are configured this can add long d
 
 ![](./dns.png)
 
-You can verify this by running `nslookup google.com`, you should see that it attempts to use the first DNS server of 
+You can verify this by running `nslookup.exe google.com`, you should see that it attempts to use the first DNS server of 
 whichever interface has the lowest metric, in this case your Ethernet adapter, and therefore will fail when connected
 to the AnyConnect VPN.
 
@@ -120,7 +120,7 @@ ifIndex InterfaceAlias                  AddressFamily NlMtu(Bytes) InterfaceMetr
 17      Wi-Fi                           IPv4                  1500            6050 Enabled  Connected       ActiveStore
 ```
 
-You can verify this is working by running `nslookup google.com`, you should see a successful request to the address
+You can verify this is working by running `nslookup.exe google.com`, you should see a successful request to the address
 of the VPN DNS server.
 
 ## WSL2 <-> Host Communication
