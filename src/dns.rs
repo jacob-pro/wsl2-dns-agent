@@ -3,13 +3,14 @@ use itertools::Itertools;
 use std::mem::transmute;
 use std::net::IpAddr;
 use std::ptr::{null_mut, slice_from_raw_parts};
+use std::slice;
 use thiserror::Error;
 use win32_utils::net::ToStdSocket;
 use win32_utils::str::FromWin32Str;
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{
     FreeMibTable, GetAdaptersAddresses, GetIpForwardTable2, GET_ADAPTERS_ADDRESSES_FLAGS,
-    IP_ADAPTER_ADDRESSES_LH, MIB_IPFORWARD_ROW2, MIB_IPFORWARD_TABLE2,
+    IP_ADAPTER_ADDRESSES_LH, MAXLEN_IFDESCR, MIB_IPFORWARD_ROW2, MIB_IPFORWARD_TABLE2,
 };
 use windows::Win32::Networking::WinSock::AF_UNSPEC;
 
@@ -53,6 +54,7 @@ fn get_routes() -> Result<Vec<Route>, Error> {
 
 #[derive(Debug)]
 struct Adapter {
+    description: String,
     ipv4_metric: u32,
     ipv6_metric: u32,
     ipv4_interface_index: u32,
@@ -93,6 +95,14 @@ fn get_adapters() -> Result<Vec<Adapter>, Error> {
         let mut out = Vec::new();
         while !next.is_null() {
             let adapter = &*(next);
+            // Description
+            let description_buffer =
+                slice::from_raw_parts(adapter.Description.0, MAXLEN_IFDESCR.try_into().unwrap())
+                    .split(|&c| c == 0)
+                    .next()
+                    .unwrap();
+            let description = String::from_utf16_lossy(&description_buffer);
+            // DNS Servers
             let mut dns_servers = Vec::new();
             let mut next_dns = adapter.FirstDnsServerAddress;
             while !next_dns.is_null() {
@@ -100,6 +110,7 @@ fn get_adapters() -> Result<Vec<Adapter>, Error> {
                 dns_servers.push(dns.Address.to_std_socket_addr().ip());
                 next_dns = dns.Next;
             }
+            // Suffixes
             let mut dns_suffixes = Vec::new();
             let first_suffix = String::from_pwstr_lossy(adapter.DnsSuffix);
             if !first_suffix.is_empty() {
@@ -111,7 +122,9 @@ fn get_adapters() -> Result<Vec<Adapter>, Error> {
                 dns_suffixes.push(String::from_wchar_lossy(&suffix.String));
                 next_suffix = suffix.Next;
             }
+
             out.push(Adapter {
+                description: description,
                 ipv4_metric: adapter.Ipv4Metric,
                 ipv6_metric: adapter.Ipv6Metric,
                 ipv4_interface_index: adapter.Anonymous1.Anonymous.IfIndex,
@@ -149,27 +162,44 @@ pub struct DnsConfiguration {
 }
 
 pub fn get_configuration() -> Result<DnsConfiguration, Error> {
-    // List of routes to the internet
-    let internet_routes = get_routes()?
-        .into_iter()
-        .filter(Route::is_internet_route)
-        .collect::<Vec<_>>();
+    let adapters = get_adapters()?;
 
-    // DNS priority is determined by interface metric
-    // However we also want to exclude various system adapters such as WSL
-    // so we will filter out any adapters that don't have a route to the internet
-    let internet_adapters = get_adapters()?
-        .into_iter()
-        .filter(|adapter| {
-            internet_routes
-                .iter()
-                .any(|route| match route.destination_prefix_ip {
-                    IpAddr::V4(_) => route.interface_index == adapter.ipv4_interface_index,
-                    IpAddr::V6(_) => route.interface_index == adapter.ipv6_interface_index,
-                })
-        })
-        .sorted_by_key(Adapter::interface_metric)
-        .collect::<Vec<_>>();
+    let internet_adapters: Vec<Adapter>;
+
+    let vpn_enabled = adapters
+        .iter()
+        .any(|adapter| adapter.description.contains("Cisco AnyConnect"));
+
+    if vpn_enabled {
+        // Get the adapters created by Cisco Anyconnect
+        internet_adapters = adapters
+            .into_iter()
+            .filter(|adapter| adapter.description.contains("Cisco AnyConnect"))
+            .sorted_by_key(Adapter::interface_metric)
+            .collect::<Vec<_>>();
+    } else {
+        // List of routes to the internet
+        let internet_routes = get_routes()?
+            .into_iter()
+            .filter(Route::is_internet_route)
+            .collect::<Vec<_>>();
+
+        // DNS priority is determined by interface metric
+        // However we also want to exclude various system adapters such as WSL
+        // so we will filter out any adapters that don't have a route to the internet
+        internet_adapters = adapters
+            .into_iter()
+            .filter(|adapter| {
+                internet_routes
+                    .iter()
+                    .any(|route| match route.destination_prefix_ip {
+                        IpAddr::V4(_) => route.interface_index == adapter.ipv4_interface_index,
+                        IpAddr::V6(_) => route.interface_index == adapter.ipv6_interface_index,
+                    })
+            })
+            .sorted_by_key(Adapter::interface_metric)
+            .collect::<Vec<_>>();
+    }
 
     let servers = internet_adapters
         .iter()
