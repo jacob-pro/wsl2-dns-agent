@@ -198,7 +198,11 @@ impl DnsConfiguration {
             .filter(|server| server.is_ipv4())
             .take(3)
             .for_each(|server| lines.push(format!("nameserver {}", server)));
-        lines.push(format!("search {}", self.suffixes.join(" ")));
+
+        if !self.suffixes.is_empty() {
+            lines.push(format!("search {}", self.suffixes.join(" ")));
+        }
+
         lines.push(String::new());
         lines.join("\n")
     }
