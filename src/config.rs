@@ -4,7 +4,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-const EXCLUDE_BY_DEFAULT: &[&str] = &["docker-desktop", "docker-desktop-data"];
+const EXCLUDE_BY_DEFAULT: &[&str] = &[
+    "docker-desktop",
+    "docker-desktop-data",
+    "rancher-desktop",
+    "rancher-desktop-data",
+];
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
