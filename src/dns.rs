@@ -9,7 +9,8 @@ use win32_utils::str::FromWin32Str;
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{
     FreeMibTable, GetAdaptersAddresses, GetIpForwardTable2, GET_ADAPTERS_ADDRESSES_FLAGS,
-    IP_ADAPTER_ADDRESSES_LH, MIB_IPFORWARD_ROW2, MIB_IPFORWARD_TABLE2,
+    IP_ADAPTER_ADDRESSES_LH, IP_ADAPTER_IPV4_ENABLED, IP_ADAPTER_IPV6_ENABLED, MIB_IPFORWARD_ROW2,
+    MIB_IPFORWARD_TABLE2,
 };
 use windows::Win32::Networking::WinSock::AF_UNSPEC;
 
@@ -59,6 +60,8 @@ struct Adapter {
     ipv6_interface_index: u32,
     dns_servers: Vec<IpAddr>,
     dns_suffixes: Vec<String>,
+    ipv4_enabled: bool,
+    ipv6_enabled: bool,
 }
 
 /// Returns a list of the system network adapters
@@ -118,6 +121,8 @@ fn get_adapters() -> Result<Vec<Adapter>, Error> {
                 ipv6_interface_index: adapter.Ipv6IfIndex,
                 dns_servers,
                 dns_suffixes,
+                ipv4_enabled: adapter.Anonymous2.Flags & IP_ADAPTER_IPV4_ENABLED != 0,
+                ipv6_enabled: adapter.Anonymous2.Flags & IP_ADAPTER_IPV6_ENABLED != 0,
             });
             next = adapter.Next;
         }
@@ -128,7 +133,19 @@ fn get_adapters() -> Result<Vec<Adapter>, Error> {
 impl Adapter {
     // For the purposes of DNS, the interface metric is whichever one is lowest
     fn interface_metric(&self) -> u32 {
-        std::cmp::min(self.ipv4_metric, self.ipv6_metric)
+        // When IPv4/IPv6 is disabled then Windows returns a metric of 0 which isn't
+        // very helpful
+        let ipv4 = if self.ipv4_enabled {
+            self.ipv4_metric
+        } else {
+            u32::MAX
+        };
+        let ipv6 = if self.ipv6_enabled {
+            self.ipv6_metric
+        } else {
+            u32::MAX
+        };
+        std::cmp::min(ipv4, ipv6)
     }
 }
 
@@ -170,6 +187,7 @@ pub fn get_configuration() -> Result<DnsConfiguration, Error> {
         })
         .sorted_by_key(Adapter::interface_metric)
         .collect::<Vec<_>>();
+    log::info!("Found adapters: {:?}", internet_adapters);
 
     let servers = internet_adapters
         .iter()
