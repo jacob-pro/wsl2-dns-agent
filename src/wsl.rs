@@ -45,7 +45,6 @@ pub enum Error {
 fn to_u16(original: &[u8]) -> Vec<u16> {
     original
         .chunks_exact(2)
-        .into_iter()
         .map(|a| u16::from_ne_bytes([a[0], a[1]]))
         .collect()
 }
