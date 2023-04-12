@@ -1,7 +1,9 @@
 use std::io::Write;
+use std::os::windows::process::CommandExt;
 use std::process::{Command, Output, Stdio};
 use std::string::{FromUtf16Error, FromUtf8Error};
 use thiserror::Error;
+use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 #[derive(Debug)]
 pub struct WslDistribution {
@@ -51,6 +53,7 @@ fn to_u16(original: &[u8]) -> Vec<u16> {
 
 pub fn get_distributions() -> Result<Vec<WslDistribution>, Error> {
     let output = Command::new("wsl.exe")
+        .creation_flags(CREATE_NO_WINDOW.0)
         .arg("--list")
         .arg("--verbose")
         .output()?;
@@ -101,6 +104,7 @@ fn check_wsl_output(output: &Output) -> Result<(), Error> {
 impl WslDistribution {
     pub fn read_file(&self, path: &str) -> Result<String, Error> {
         let output = Command::new("wsl.exe")
+            .creation_flags(CREATE_NO_WINDOW.0)
             .arg("--distribution")
             .arg(&self.name)
             .arg("--user")
@@ -115,6 +119,7 @@ impl WslDistribution {
     pub fn set_read_only(&self, path: &str, read_only: bool) -> Result<(), Error> {
         let arg = if read_only { "+i" } else { "-i" };
         let output = Command::new("wsl.exe")
+            .creation_flags(CREATE_NO_WINDOW.0)
             .arg("--distribution")
             .arg(&self.name)
             .arg("--user")
@@ -129,6 +134,7 @@ impl WslDistribution {
 
     pub fn write_file(&self, path: &str, contents: &str) -> Result<(), Error> {
         let mut p = Command::new("wsl.exe")
+            .creation_flags(CREATE_NO_WINDOW.0)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -151,6 +157,7 @@ impl WslDistribution {
 
     pub fn terminate(&self) -> Result<(), Error> {
         let output = Command::new("wsl.exe")
+            .creation_flags(CREATE_NO_WINDOW.0)
             .arg("--terminate")
             .arg(&self.name)
             .output()?;
