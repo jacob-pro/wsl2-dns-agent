@@ -5,7 +5,7 @@ This guide applies to Cisco AnyConnect in environments where it has been configu
 ## Step #1 - WSL2 Internet Access
 
 First you need to ensure your WSL2 distributions can access the internet. Before connecting to the VPN your routes for
-WSL2 will look something like (using the `Get-NetAdapter` command in powershell):
+WSL2 will look something like (using the `Get-NetRoute` command in powershell):
 
 ```
 ifIndex DestinationPrefix                              NextHop                                  RouteMetric ifMetric PolicyStore

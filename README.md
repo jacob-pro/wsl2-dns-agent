@@ -19,13 +19,15 @@ Thanks to @pyther for the [inspiration for this tool](https://gist.github.com/py
 **Ensure you have first fixed the route table for WSL2, and not broken the Windows DNS server priority in the process**.
 See the [guide](./docs/ROUTING.md) for how to do this.
 
-Simply download `wsl2-dns-agent.exe` from the [releases page](https://github.com/jacob-pro/wsl2-dns-agent/releases/latest)
+**Ensure you have the `chattr` command present within your WSL2 distribution**. 
+For RHEL-family distributions you can use `sudo yum install e2fsprogs`.
 
-Save it to your startup folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`).
+Download `wsl2-dns-agent.exe` from the [releases page](https://github.com/jacob-pro/wsl2-dns-agent/releases/latest)
 
-Launch the application.
+(Optionally) save it to your [startup folder](https://support.microsoft.com/en-us/windows/add-an-app-to-run-automatically-at-startup-in-windows-10-150da165-dcd9-7230-517b-cf3c295d89dd) 
+(`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`), so it is automatically launched when you log in.
 
-Note: You must have the `chattr` command installed within your WSL2 distribution.
+Launch the `wsl2-dns-agent.exe` application.
 
 ## Diagnostics
 
