@@ -7,6 +7,12 @@ split-tunneling).
 
 Thanks to @pyther for the [inspiration for this tool](https://gist.github.com/pyther/b7c03579a5ea55fe431561b502ec1ba8).
 
+> ⚠ As of [September 2023](https://devblogs.microsoft.com/commandline/windows-subsystem-for-linux-september-2023-update/),
+> WSL2 now has an experimental `dnsTunneling` option that makes this tool unnecessary.
+>
+> There is also a new `mirrored` networking mode that means you don't need to modify the route table either
+> (although this has some limitations).
+
 ## How it works
 
 1. The agent detects when you connect/disconnect from a VPN.
