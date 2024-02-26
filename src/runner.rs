@@ -49,6 +49,7 @@ pub fn start_runner(config: Config, rx: mpsc::Receiver<RunReason>, tray: TrayHan
 }
 
 #[derive(Debug, Error)]
+#[allow(clippy::enum_variant_names)]
 enum Error {
     #[error("Win32 DNS error: {0}")]
     Dns(
