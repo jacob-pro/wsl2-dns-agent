@@ -312,7 +312,7 @@ checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 [[package]]
 name = "win32-utils"
 version = "0.1.0"
-source = "git+https://github.com/jacob-pro/win32-utils#b3de3551950cd0272c238f518edbc633349bc4c8"
+source = "git+https://github.com/jacob-pro/win32-utils?rev=055c60695dbc4d300f3caaacec25ae82415fa545#055c60695dbc4d300f3caaacec25ae82415fa545"
 dependencies = [
  "thiserror",
  "windows",
@@ -437,7 +437,7 @@ checksum = "f4dd6dc7df2d84cf7b33822ed5b86318fb1781948e9663bacd047fc9dd52259d"
 
 [[package]]
 name = "wsl2-dns-agent"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "chrono",
  "configparser",

@@ -188,7 +188,8 @@ impl TrayProperties {
             .copy_to_wchar_buffer(&mut self.icon.szInfoTitle)
             .unwrap();
         message.copy_to_wchar_buffer(&mut self.icon.szInfo).unwrap();
-        Shell_NotifyIconW(NIM_MODIFY, &self.icon).ok().unwrap();
+        // https://github.com/jacob-pro/wsl2-dns-agent/issues/9
+        Shell_NotifyIconW(NIM_MODIFY, &self.icon);
     }
 
     unsafe fn show_tray_menu(&self) {

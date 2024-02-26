@@ -1,6 +1,6 @@
 [package]
 name = "wsl2-dns-agent"
-version = "0.3.5"
+version = "0.3.6"
 edition = "2021"
 license = "GPL-3.0"
 description = "An agent that automatically patches your WSL2 DNS configuration for users of Cisco AnyConnect (or similar VPNs)"
@@ -18,7 +18,7 @@ serde = { version = "1.0.137", features = ["derive"] }
 simplelog = "0.12.0"
 thiserror = "1.0.31"
 toml = "0.5.9"
-win32-utils = { git = "https://github.com/jacob-pro/win32-utils", features = ["net", "window", "instance"] }
+win32-utils = { git = "https://github.com/jacob-pro/win32-utils", features = ["net", "window", "instance"], rev = "055c60695dbc4d300f3caaacec25ae82415fa545" }
 
 [dependencies.windows]
 version = "0.37.0"
