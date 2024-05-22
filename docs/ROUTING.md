@@ -53,8 +53,8 @@ Open task scheduler and click "Create task":
 - Name: "Update AnyConnect Adapter Interface Metric for WSL2"
 - Security options: Check "Run with highest privileges"
 - Triggers:
-  - On an Event, Log: Cisco AnyConnect Secure Mobility Client, Source: acvpnagent, Event ID: 2039
-  - On an Event, Log: Cisco AnyConnect Secure Mobility Client, Source: acvpnagent, Event ID: 2041
+  - On an Event, Log: Cisco Secure Client - AnyConnect VPN, Source: csc_vpnagent, Event ID: 2039
+  - On an Event, Log: Cisco Secure Client - AnyConnect VPN, Source: csc_vpnagent, Event ID: 2041
 - Actions: Start a program, Program/script: `powershell.exe`, 
   Add arguments: `-WindowStyle Hidden -NonInteractive -ExecutionPolicy Bypass -File %HOMEPATH%\Documents\setCiscoVpnMetric.ps1`
 - Conditions: Uncheck "Start the task only if the computer is on AC power"
